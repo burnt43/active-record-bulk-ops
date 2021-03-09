@@ -1,5 +1,11 @@
 module ActiveRecord
   module BulkOps
+    class << self
+      def comparable_ruby_version
+        @comparable_ruby_version ||= RUBY_VERSION.split('.').map{|x| sprintf("%02d", x)}.join
+      end
+    end
+
     module Insertion
       # NOTE: The constructor takes a collection of records that have not yet
       #   been saved to the database. We make a few assumptions for the sake
@@ -19,16 +25,24 @@ module ActiveRecord
         ALLOCATED_STRING_SIZE = 2**24
         STRING_SIZE_THRESHOLD = 2**23
 
-        def initialize(collection=[], override_attributes: {})
+        def initialize(
+          collection=[],
+          override_attributes: {},
+          touch_created_at: false,
+          touch_updated_at: false
+        )
           @collection = collection
           return if @collection.empty?
 
           # add the timestamp columns to the override attributes
-          timestamp = @collection[0].send(:current_time_from_proper_timezone)
-          override_attributes_with_timestamps = {
-            created_at: timestamp,
-            updated_at: timestamp
-          }.merge(override_attributes)
+          complete_override_attributes =
+            if touch_created_at || touch_updated_at
+              timestamp = @collection[0].send(:current_time_from_proper_timezone)
+
+              {created_at: timestamp, updated_at: timestamp}.merge(override_attributes)
+            else
+              override_attributes
+            end
 
           # find the class for this collection. the collection needs to be
           # homogenous for the insert to work.
@@ -43,7 +57,7 @@ module ActiveRecord
 
           # convert the override_attributes into usable mysql values
           converted_override_attributes = Hash[
-            override_attributes_with_timestamps.stringify_keys.map do |key, value|
+            complete_override_attributes.stringify_keys.map do |key, value|
               converted_value = @insertion_class.defined_enums.dig(key, value.to_s) || value
               [key, @insertion_class.connection._quote(converted_value)]
             end
@@ -88,7 +102,7 @@ module ActiveRecord
           # and this will reduce memory operators and should be faster as a
           # hash
           insert_line_hash = {
-            0 => String.new(comparable_ruby_version > "020600" ? {capacity: ALLOCATED_STRING_SIZE} : {})
+            0 => String.new(ActiveRecord::BulkOps.comparable_ruby_version > "020600" ? {capacity: ALLOCATED_STRING_SIZE} : {})
           }
           current_insert_line = insert_line_hash[insert_line_hash_index]
           current_insert_line << insert_line_prefix
@@ -134,7 +148,7 @@ module ActiveRecord
             # string up.
             if insert_line_hash[insert_line_hash_index].size > STRING_SIZE_THRESHOLD
               insert_line_hash_index += 1
-              insert_line_hash[insert_line_hash_index] = String.new(comparable_ruby_version > "020600" ? {capacity: ALLOCATED_STRING_SIZE} : {})
+              insert_line_hash[insert_line_hash_index] = String.new(ActiveRecord::BulkOps.comparable_ruby_version > "020600" ? {capacity: ALLOCATED_STRING_SIZE} : {})
               current_insert_line = insert_line_hash[insert_line_hash_index]
               current_insert_line << insert_line_prefix
             elsif item_index != item_max_index
