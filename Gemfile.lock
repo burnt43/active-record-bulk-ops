@@ -1,0 +1,41 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    activemodel (4.2.9)
+      activesupport (= 4.2.9)
+      builder (~> 3.1)
+    activerecord (4.2.9)
+      activemodel (= 4.2.9)
+      activesupport (= 4.2.9)
+      arel (~> 6.0)
+    activesupport (4.2.9)
+      i18n (~> 0.7)
+      minitest (~> 5.1)
+      thread_safe (~> 0.3, >= 0.3.4)
+      tzinfo (~> 1.1)
+    arel (6.0.4)
+    builder (3.2.4)
+    concurrent-ruby (1.1.8)
+    i18n (0.9.5)
+      concurrent-ruby (~> 1.0)
+    mini_record (0.4.7)
+      activerecord (>= 3.2.0)
+    minitest (5.14.4)
+    mysql2 (0.4.10)
+    rake (13.0.3)
+    thread_safe (0.3.6)
+    tzinfo (1.2.9)
+      thread_safe (~> 0.1)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  activerecord (= 4.2.9)
+  mini_record (= 0.4.7)
+  minitest
+  mysql2 (= 0.4.10)
+  rake
+
+BUNDLED WITH
+   2.0.2

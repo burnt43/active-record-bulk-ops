@@ -73,7 +73,18 @@ module ActiveRecord
         end
 
         def insert!
-          return if @collection.empty?
+          # send each 'INSERT INTO' to the mysql server
+          insert_line_hash.values.each do |mysql_string|
+            @insertion_class.connection.execute(mysql_string)
+          end
+        end
+
+        private
+
+        def insert_line_hash
+          return @insert_line_hash if @insert_line_hash
+
+          return {} if @collection.empty?
 
           # keep track of different indices
           column_index = 0
@@ -115,11 +126,23 @@ module ActiveRecord
 
             # normal columns we must convert to a string that mysql understands
             @columns.each do |column|
-              current_insert_line << "#{
+              # If this column represents an enum, then we have to convert
+              # to the integer value for the string, otherwise mysql will
+              # interpret this as a 0 for the value no matter what.
+              column_value_with_enum_conversion =
+                if @insertion_class.defined_enums.key?(column.name)
+                  @insertion_class.defined_enums.dig(column.name, item.send(column.name))
+                else
+                  item.send(column.name)
+                end
+
+              # Convert the value of the column to something mysql understands.
+              column_value_for_db =
                 @insertion_class
                 .connection
-                ._quote(column.cast_type.type_cast_for_database(item.send(column.name)))
-              }" 
+                ._quote(column.cast_type.type_cast_for_database(column_value_with_enum_conversion))
+
+              current_insert_line << "#{column_value_for_db}"
 
               unless column_index == columns_max_index
                 current_insert_line << ','
@@ -156,10 +179,7 @@ module ActiveRecord
             end
           end
 
-          # send each 'INSERT INTO' to the mysql server
-          insert_line_hash.values.each do |mysql_string|
-            @insertion_class.connection.execute(mysql_string)
-          end
+          @insert_line_hash = insert_line_hash
         end
       end
     end
