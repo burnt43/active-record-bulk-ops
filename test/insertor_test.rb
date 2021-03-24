@@ -4,6 +4,27 @@ module ActiveRecord
   module BulkOps
     module Testing
       class InsertorTest < ActiveRecord::BulkOps::Testing::Test
+        def test_set_all_columns_option
+          foo01 = ActiveRecord::BulkOps::Testing::Foo.new(
+            string01: 'string 1'
+          )
+
+          insertor01 = ActiveRecord::BulkOps::Insertion::Insertor.new(
+            [foo01],
+            set_all_columns: false
+          )
+          hash01 = insertor01.send(:insert_line_hash)
+
+          insertor02 = ActiveRecord::BulkOps::Insertion::Insertor.new(
+            [foo01],
+            set_all_columns: true
+          )
+          hash02 = insertor02.send(:insert_line_hash)
+
+          assert(hash01[0].start_with?('INSERT INTO `foos` (`string01`)'))
+          assert(hash02[0].start_with?('INSERT INTO `foos` (`enum01`,`int01`,`string01`)'))
+        end
+
         def test_insert_line_hash_with_enums
           foo01 = ActiveRecord::BulkOps::Testing::Foo.new(
             enum01:   'value01',

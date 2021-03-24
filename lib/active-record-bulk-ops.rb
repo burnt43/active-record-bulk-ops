@@ -29,7 +29,8 @@ module ActiveRecord
           collection=[],
           override_attributes: {},
           touch_created_at: false,
-          touch_updated_at: false
+          touch_updated_at: false,
+          set_all_columns: false
         )
           @collection = collection
           return if @collection.empty?
@@ -48,8 +49,17 @@ module ActiveRecord
           # homogenous for the insert to work.
           @insertion_class = @collection[0]&.class
 
-          # find the minimal set of columns we need to set
-          column_names = @collection[0].send(:keys_for_partial_write).to_set
+          # Create a set of all column names that we will be setting with out
+          # INSERT command.
+          column_names =
+            if set_all_columns
+              @insertion_class.column_names.reject do |column_name|
+                column_name == 'id'
+              end
+            else
+              # find the minimal set of columns we need to set
+              @collection[0].send(:keys_for_partial_write).to_set
+            end
 
           # find the active record representation of the database columns
           # we need to set
